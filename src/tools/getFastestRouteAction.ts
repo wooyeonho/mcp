@@ -8,14 +8,14 @@ import { getProfile, rememberDestination } from "../storage/profileStore.js";
 
 export const fastestSchema = { query: z.string(), origin: z.string().optional(), destination: z.string().optional(), arrivalBy: z.string().optional(), includeTaxi: z.boolean().optional(), currentLocation: z.string().optional() };
 
-export async function getFastestRouteAction(input: z.infer<z.ZodObject<typeof fastestSchema>>, routeProvider: RouteProvider) {
+export async function getFastestRouteAction(input: z.infer<z.ZodObject<typeof fastestSchema>>, routeProvider: RouteProvider, userId: string) {
   try {
-    const profile = getProfile();
+    const profile = getProfile(userId);
     const intent = resolveIntent(input.query, profile, { origin: input.origin ?? input.currentLocation, destination: input.destination, arrivalBy: input.arrivalBy ? parseKoreanArrivalTime(input.arrivalBy) : undefined });
     if (intent.needs) return askClarification(intent.needs, input.query.includes("퇴근") ? "퇴근길" : undefined);
 
     const options = await routeProvider.getRouteOptions({ origin: intent.origin!, destination: intent.destination!, includeTaxi: input.includeTaxi, arrivalBy: intent.arrivalBy, weather: intent.weather });
-    rememberDestination(intent.destination!);
+    rememberDestination(intent.destination!, userId);
 
     const practical = options.find((o) => o.mode === "subway") ?? options[0];
     const walk = estimateWalking(practical.firstWalkMinutes);
