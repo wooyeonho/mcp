@@ -1,4 +1,4 @@
-import type { GoodRouteRequest, GoodRouteSuggestion, RouteOption, RouteProvider, RouteRequest } from "./types.js";
+import type { GoodRouteRequest, GoodRouteSuggestion, RouteOption, RouteProvider, RouteRequest, WeatherContext } from "./types.js";
 
 interface RouteFixture {
   match: (origin: string, destination: string) => boolean;
@@ -44,7 +44,7 @@ const fixtures: RouteFixture[] = [
     },
   },
   {
-    match: (o, d) => d.includes("병원") || d.includes("의료"),
+    match: (_o, d) => d.includes("병원") || d.includes("의료"),
     routes: (req) => [
       { mode: "subway", durationMinutes: 42, line: "2호선+환승", direction: `${req.destination} 방면`, boardAt: `${req.origin} 인근역`, alightAt: `${req.destination} 인근역`, firstWalkMinutes: 5, lastWalkMinutes: 8, fareKrw: 1550, missedFallback: "다음 열차로 탑승하세요. 환승 포함 5분 지연됩니다." },
       { mode: "bus", durationMinutes: 50, busNumber: "간선버스", boardAt: `${req.origin} 정류장`, alightAt: `${req.destination} 정류장`, firstWalkMinutes: 4, lastWalkMinutes: 10, fareKrw: 1500, missedFallback: "다음 버스 기다리거나 지하철로 전환하세요." },
@@ -53,7 +53,7 @@ const fixtures: RouteFixture[] = [
     good: () => ({ concept: "병원 전에 마음 정리하는 산책 코스", stopBy: "인근 공원 산책 → 병원", detour: "병원 근처 조용한 길로 우회", extraMinutesRange: [8, 12], reason: "병원 가기 전 마음이 급하면 대기 시간이 더 길게 느껴집니다.", finalAction: "10분 일찍 나와서 천천히 걸어가세요. 대기 시간에 마음이 편합니다." }),
   },
   {
-    match: (_o, _d) => true, // fallback
+    match: () => true,
     routes: (req) => [
       { mode: "subway", durationMinutes: 35, line: "지하철", direction: `${req.destination} 방면`, boardAt: `${req.origin} 인근역`, alightAt: `${req.destination} 인근역`, firstWalkMinutes: 5, lastWalkMinutes: 6, fareKrw: 1550, missedFallback: "다음 열차 3~5분 뒤 출발합니다." },
       { mode: "bus", durationMinutes: 45, busNumber: "간선버스", boardAt: `${req.origin} 정류장`, alightAt: `${req.destination} 정류장`, firstWalkMinutes: 4, lastWalkMinutes: 7, fareKrw: 1500, missedFallback: "다음 버스를 기다리거나 지하철로 전환하세요." },
@@ -67,13 +67,17 @@ const fixtures: RouteFixture[] = [
   },
 ];
 
-// Weather context for enhanced responses
-function applyWeatherContext(options: RouteOption[], req: RouteRequest): RouteOption[] {
-  const query = `${req.origin} ${req.destination}`.toLowerCase();
-  if (query.includes("비") || query.includes("우산")) {
+function applyWeatherContext(options: RouteOption[], weather?: WeatherContext): RouteOption[] {
+  if (!weather || weather === "clear") return options;
+  if (weather === "rain") {
     return options.map((o) => o.mode === "taxi"
-      ? { ...o, missedFallback: "비 오는 날은 택시 대기 길어집니다. 5분 안에 안 잡히면 지하철로 전환하세요." }
+      ? { ...o, missedFallback: "비 오는 날은 택시 대기가 길어집니다. 5분 안에 안 잡히면 지하철로 전환하세요." }
       : { ...o, firstWalkMinutes: o.firstWalkMinutes + 2, missedFallback: `${o.missedFallback} 비 올 때는 미끄러우니 여유 있게 이동하세요.` });
+  }
+  if (weather === "snow") {
+    return options.map((o) => o.mode === "taxi"
+      ? { ...o, durationMinutes: o.durationMinutes + 10, missedFallback: "눈 오는 날은 도로가 느립니다. 지하철이 더 확실합니다." }
+      : { ...o, firstWalkMinutes: o.firstWalkMinutes + 3, missedFallback: `${o.missedFallback} 눈길 조심하세요. 여유 있게 걸으세요.` });
   }
   return options;
 }
@@ -82,7 +86,8 @@ export class MockRouteProvider implements RouteProvider {
   async getRouteOptions(req: RouteRequest): Promise<RouteOption[]> {
     const fixture = fixtures.find((f) => f.match(req.origin, req.destination))!;
     const options = fixture.routes(req);
-    return applyWeatherContext(req.includeTaxi === false ? options.filter((o) => o.mode !== "taxi") : options, req);
+    const filtered = req.includeTaxi === false ? options.filter((o) => o.mode !== "taxi") : options;
+    return applyWeatherContext(filtered, req.weather);
   }
 
   async getGoodRoute(req: GoodRouteRequest): Promise<GoodRouteSuggestion> {

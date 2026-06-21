@@ -19,7 +19,16 @@ export async function getGoodRoute(input: z.infer<z.ZodObject<typeof goodRouteSc
     const place = places[0];
     const lines: string[] = [];
 
-    // 1. 결론 — 오늘의 코스 한 문장
+    // Weather warning for good route
+    if (intent.weather === "rain") {
+      lines.push("비 오는 날이지만 여유 있으니까요. 실내 위주로 추천합니다.");
+      lines.push("");
+    } else if (intent.weather === "snow") {
+      lines.push("눈 오는 날입니다. 따뜻한 실내 코스 위주로 추천합니다.");
+      lines.push("");
+    }
+
+    // 1. 결론
     lines.push(suggestion.finalAction);
     lines.push("");
 
@@ -48,7 +57,10 @@ export async function getGoodRoute(input: z.infer<z.ZodObject<typeof goodRouteSc
 
     return lines.join("\n");
   } catch (error) {
-    console.error("good_route_error", error instanceof Error ? error.message : "unknown");
+    const msg = error instanceof Error ? error.message : "unknown";
+    console.error("good_route_error", msg);
+    if (msg.includes("origin") || msg.includes("destination")) return "출발지와 목적지를 다시 한 번 알려주세요.";
+    if (msg.includes("provider") || msg.includes("network")) return "경로 조회 중 문제가 생겼습니다. 잠시 뒤 다시 시도해주세요.";
     return "예상 기준으로 안내할게요. 큰길보다 조용한 길로 짧게 우회하는 코스를 추천합니다.";
   }
 }
