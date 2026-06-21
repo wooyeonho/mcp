@@ -75,7 +75,7 @@ npm run test:demo
   - 빠른 길, 최단, 늦음, 도착 마감, 출근/퇴근 기본 질의는 `get_fastest_route_action`
   - 낭만, 카페, 산책, 혼밥, 분위기, 돌아가는 길은 `get_good_route`
   - 집/회사/별칭 저장은 `save_user_places`
-- PlayMCP가 세션 metadata나 `currentLocation`을 명시적으로 제공할 때만 그 값을 tool input의 `origin`으로 전달하세요. 제공되지 않으면 오늘길은 자동 GPS를 가정하지 않습니다.
+- PlayMCP가 세션 metadata나 `currentLocation`을 명시적으로 제공할 때만 그 값을 tool input의 `origin` 또는 `currentLocation`으로 전달하세요. 제공되지 않으면 오늘길은 자동 GPS를 가정하지 않습니다.
 
 ## 향후 실제 API 연동
 

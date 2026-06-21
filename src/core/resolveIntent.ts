@@ -37,14 +37,18 @@ export function resolveIntent(query: string, profile: UserProfile, explicit: Par
     intent.origin = explicit.origin ?? cleanPlace(fromTo[1]);
     intent.destination = explicit.destination ?? cleanPlace(fromTo[2]);
   }
-  if (query.includes("집 가는 길") || query.includes("집가는 길")) intent.destination = explicit.destination ?? profile.home;
+  const asksHomeRoute = query.includes("집 가는 길") || query.includes("집가는 길");
+  if (asksHomeRoute) {
+    intent.destination = explicit.destination ?? profile.home;
+    if (!profile.home && !explicit.destination) intent.needs = "home";
+  }
   const shortFast = query.match(/^(.+?)\s+(?:빨리|최단)$/);
   if (!intent.destination && shortFast) intent.destination = cleanPlace(shortFast[1]);
 
   intent = fillFromProfile(intent, profile);
   if (!intent.needs) {
     if (!intent.destination) intent.needs = "destination";
-    if (!intent.origin) intent.needs = "origin";
+    else if (!intent.origin) intent.needs = "origin";
   }
   return intent;
 }

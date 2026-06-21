@@ -5,11 +5,11 @@ import { formatSeoulTime, parseKoreanArrivalTime } from "../core/timeParser.js";
 import { estimateWalking } from "../core/walkingEstimator.js";
 import type { RouteProvider } from "../providers/types.js";
 import { getProfile, rememberDestination } from "../storage/profileStore.js";
-export const fastestSchema = { query: z.string(), origin: z.string().optional(), destination: z.string().optional(), arrivalBy: z.string().optional(), includeTaxi: z.boolean().optional() };
+export const fastestSchema = { query: z.string(), origin: z.string().optional(), destination: z.string().optional(), arrivalBy: z.string().optional(), includeTaxi: z.boolean().optional(), currentLocation: z.string().optional() };
 export async function getFastestRouteAction(input: z.infer<z.ZodObject<typeof fastestSchema>>, routeProvider: RouteProvider) {
   try {
     const profile = getProfile();
-    const intent = resolveIntent(input.query, profile, { origin: input.origin, destination: input.destination, arrivalBy: input.arrivalBy ? parseKoreanArrivalTime(input.arrivalBy) : undefined });
+    const intent = resolveIntent(input.query, profile, { origin: input.origin ?? input.currentLocation, destination: input.destination, arrivalBy: input.arrivalBy ? parseKoreanArrivalTime(input.arrivalBy) : undefined });
     if (intent.needs) return askClarification(intent.needs, input.query.includes("퇴근") ? "퇴근길" : undefined);
     const options = await routeProvider.getRouteOptions({ origin: intent.origin!, destination: intent.destination!, includeTaxi: input.includeTaxi, arrivalBy: intent.arrivalBy });
     rememberDestination(intent.destination!);
