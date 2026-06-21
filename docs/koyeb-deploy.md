@@ -20,6 +20,7 @@
 ```
 PORT=3000
 NODE_ENV=production
+PROFILE_STORE_PATH=./data/profiles.json
 ```
 
 ## 3. Dockerfile 배포 (권장)
@@ -42,7 +43,7 @@ CMD ["node", "dist/index.js"]
 curl https://<app-name>.koyeb.app/health
 
 # 기대 응답:
-# {"ok":true,"service":"oneulgil-mcp","version":"0.2.0","tools":["save_user_places","get_fastest_route_action","get_good_route"],"features":["weather_context","urgency_detection","recent_destination","fixture_routing"]}
+# {"ok":true,"service":"oneulgil-mcp","version":"0.2.0","tools":["save_user_places","get_fastest_route_action","get_good_route"],"features":["weather_context","urgency_detection","recent_destination","fixture_routing","per_session_profile","file_persistence"]}
 ```
 
 ## 5. PlayMCP 등록
@@ -54,6 +55,9 @@ curl https://<app-name>.koyeb.app/health
 ## 6. 무료 플랜 주의사항
 
 - Free nano 인스턴스는 비활성 시 슬립됩니다 (cold start ~10초)
+- 슬립 후 재시작 시 프로필 JSON 파일이 유지되려면 persistent storage가 필요합니다
+  - Koyeb Free는 ephemeral disk이므로 재시작 시 프로필 초기화됩니다
+  - contest 데모 중에는 문제 없습니다 (세션 내 유지)
 - 첫 요청 시 약간의 지연이 있을 수 있습니다
 - 월 사용량 제한이 있으므로 contest 기간에만 활성화 권장
 - 커스텀 도메인은 유료 플랜에서 가능
@@ -66,3 +70,4 @@ curl https://<app-name>.koyeb.app/health
 | Build 실패 | `npm run build` 로컬에서 먼저 확인 |
 | MCP 연결 안 됨 | CORS 헤더 확인, `POST /mcp` 엔드포인트 확인 |
 | Cold start 느림 | 배포 전 한 번 health check 호출로 워밍업 |
+| 프로필 초기화됨 | Koyeb Free는 ephemeral disk — 세션 내에서는 유지됨 |

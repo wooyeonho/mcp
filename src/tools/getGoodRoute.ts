@@ -6,17 +6,17 @@ import { getProfile, rememberDestination } from "../storage/profileStore.js";
 
 export const goodRouteSchema = { query: z.string(), origin: z.string().optional(), currentLocation: z.string().optional(), destination: z.string().optional(), mood: z.string().optional(), placeType: z.enum(["cafe", "restaurant", "walk", "dessert", "any"]).optional(), maxExtraMinutes: z.number().int().positive().optional() };
 
-export async function getGoodRoute(input: z.infer<z.ZodObject<typeof goodRouteSchema>>, routeProvider: RouteProvider, placeProvider: PlaceProvider) {
+export async function getGoodRoute(input: z.infer<z.ZodObject<typeof goodRouteSchema>>, routeProvider: RouteProvider, placeProvider: PlaceProvider, userId: string) {
   try {
-    const profile = getProfile();
+    const profile = getProfile(userId);
     const intent = resolveIntent(input.query, profile, { origin: input.origin ?? input.currentLocation, destination: input.destination, mood: input.mood, placeType: input.placeType, maxExtraMinutes: input.maxExtraMinutes });
     if (intent.needs) return askClarification(intent.needs);
 
     const suggestion = await routeProvider.getGoodRoute({ origin: intent.origin!, destination: intent.destination!, mood: intent.mood, placeType: intent.placeType, maxExtraMinutes: intent.maxExtraMinutes });
     const places = await placeProvider.findAlongRoute(intent.origin!, intent.destination!, intent.placeType ?? "any");
-    rememberDestination(intent.destination!);
+    rememberDestination(intent.destination!, userId);
 
-    const place = places[0];
+    const place = places[0] ?? { name: "주변 추천 장소", note: "경로 근처 분위기 좋은 곳", extraMinutes: 5 };
     const lines: string[] = [];
 
     // Weather warning for good route
