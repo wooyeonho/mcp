@@ -1,6 +1,6 @@
 export type RouteMode = "subway" | "bus" | "taxi";
 
-export interface RouteRequest { origin: string; destination: string; includeTaxi?: boolean; arrivalBy?: Date; }
+export interface RouteRequest { origin: string; destination: string; includeTaxi?: boolean; arrivalBy?: Date; weather?: "rain"; }
 export interface RouteOption {
   mode: RouteMode;
   durationMinutes: number;
