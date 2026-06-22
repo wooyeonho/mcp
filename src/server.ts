@@ -46,7 +46,8 @@ export function createHttpApp() {
         const sessionUserId = randomUUID();
         transport = new StreamableHTTPServerTransport({ sessionIdGenerator: () => sessionUserId, onsessioninitialized: (id) => { transports[id] = transport!; } });
         transport.onclose = () => { if (transport?.sessionId) delete transports[transport.sessionId]; };
-        setTimeout(() => { if (transport?.sessionId) delete transports[transport.sessionId]; }, 30 * 60 * 1000);
+        const cleanupTimer = setTimeout(() => { if (transport?.sessionId) delete transports[transport.sessionId]; }, 30 * 60 * 1000);
+        cleanupTimer.unref?.();
         await createMcpServer(sessionUserId).connect(transport);
       }
       if (!transport) { res.status(400).json({ jsonrpc: "2.0", error: { code: -32000, message: "Bad Request: no valid session" }, id: null }); return; }
