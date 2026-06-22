@@ -86,6 +86,7 @@ Docker 기반 배포가 필요하면 포함된 `Dockerfile`을 사용할 수 있
 - PlayMCP 등록 URL: `https://<koyeb-app>.koyeb.app/mcp`
 
 자세한 배포 순서는 [`docs/koyeb-deploy.md`](docs/koyeb-deploy.md)를 참고하세요.
+PlayMCP 등록/시연 체크리스트는 [`docs/playmcp-registration.md`](docs/playmcp-registration.md)를 참고하세요.
 
 ## PlayMCP 등록 메모
 
