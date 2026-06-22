@@ -54,7 +54,7 @@ export async function getFastestRouteAction(input: z.infer<z.ZodObject<typeof fa
     } else {
       lines.push(`지금 바로 ${practical.boardAt} 쪽으로 걸어가세요.`);
       if (toStopCrossings > 0) {
-        lines.push(`${practical.boardAt}까지 도보 ${walk.normal}분 + 횡단보도 ${toStopCrossings}곳 대기 = 실제 약 ${Math.ceil(realFirstWalk)}분.`);
+        lines.push(`${practical.boardAt}까지 도보 ${walk.normal}분 + 횡단보도 ${toStopCrossings}곳 대기 = 실제 약 ${Math.ceil(realFirstWalk)}분. ${formatSeoulTime(arrival)} 도착 가능합니다.`);
       } else {
         lines.push(`${walk.normal}분 안에 도착하면 ${formatSeoulTime(arrival)} 도착 가능합니다.`);
       }
@@ -86,9 +86,9 @@ export async function getFastestRouteAction(input: z.infer<z.ZodObject<typeof fa
     }
     lines.push("");
 
-    // 현실 총 소요시간
+    // 현실 총 소요시간 (택시 추천 시에는 표시하지 않음)
     const crossingInfo = crossingSummary(toStopCrossings, fromStopCrossings);
-    if (crossingInfo) {
+    if (crossingInfo && !(isLate && taxi)) {
       lines.push(`${crossingInfo}`);
       lines.push(`현실 총 소요시간: 약 ${totalRealMinutes}분 (도보 + 횡단보도 대기 + 탑승 포함)`);
       lines.push("");
