@@ -32,6 +32,18 @@ KakaoTalk 안에서 사용자가 다음에 무엇을 해야 하는지 바로 결
 | **안정적인 유저 ID** | `x-kakao-user-id` 헤더 지원 — 세션 재연결 시에도 프로필 유지 |
 | **서울 경로 목 확장** | 강남↔신림, 여의도↔강남, 잠실, 성수/건대, 공항 등 추가 |
 
+## 아키텍처: Mock-first + Optional Enhancement
+
+```
+지하철 · 버스  → Mock provider (항상 동작, fallback 보장)
+택시 · 자동차  → Kakao Mobility API (차량 경로·요금 보강, 키 없으면 mock)
+장소 검색     → Kakao Local API (좌표·카테고리 검색, 키 없으면 내장 데이터)
+날씨 context  → Open-Meteo (실시간, 키 불필요, 실패 시 조용히 skip)
+```
+
+**Kakao Mobility는 자동차/택시 경로 API입니다.** 지하철·버스 실시간 API가 아닙니다.  
+대중교통은 mock-based 경로를 사용하며, 실제 API 장애와 무관하게 항상 한국어 응답을 반환합니다.
+
 ## 카카오 API 연동
 
 ### 한 개의 키로 모든 기능
@@ -42,17 +54,18 @@ KakaoTalk 안에서 사용자가 다음에 무엇을 해야 하는지 바로 결
 KAKAO_REST_API_KEY=your_kakao_rest_api_key
 ```
 
-| 기능 | API | 엔드포인트 |
-|------|-----|-----------|
-| 장소 검색 | Kakao Local | `dapi.kakao.com/v2/local/search/keyword.json` |
-| 좌표 조회 | Kakao Local | 장소명 → 위도/경도 변환 |
-| 택시 경로·요금 | Kakao Mobility | `apis-navi.kakaomobility.com/v1/directions` |
+| 기능 | API | 엔드포인트 | 없으면 |
+|------|-----|-----------|--------|
+| 장소 검색 | Kakao Local | `dapi.kakao.com/v2/local/search/keyword.json` | 내장 좌표 테이블 |
+| 좌표 조회 | Kakao Local | 장소명 → 위도/경도 변환 | 주요 50개 역 내장 |
+| 택시 경로·요금 | Kakao Mobility Directions | `apis-navi.kakaomobility.com/v1/directions` | mock 택시 데이터 |
 
-키가 없으면 스마트 목 데이터로 자동 폴백하며 데모는 정상 동작합니다.
+키가 없어도 데모 13개 시나리오 전부 동작합니다.
 
-### Open-Meteo (키 불필요)
+### Open-Meteo (키 불필요, 실패 시 조용히 skip)
 
-서울 실시간 날씨를 자동 감지합니다. 사용자가 "비 오는데"를 말하지 않아도 오늘길이 먼저 알려줍니다.
+서울 실시간 날씨를 자동 감지합니다. 사용자가 "비 오는데"를 말하지 않아도 오늘길이 먼저 알려줍니다.  
+API 실패 · 타임아웃 시 아무 말 없이 날씨 없는 응답을 반환합니다 (MCP 응답이 깨지지 않음).
 
 ```
 https://api.open-meteo.com/v1/forecast?latitude=37.5665&longitude=126.9780&current=precipitation,rain,snowfall
