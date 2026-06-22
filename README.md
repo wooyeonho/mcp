@@ -20,6 +20,7 @@
 - `@modelcontextprotocol/sdk` Streamable HTTP remote MCP
 - `/health` 헬스 체크
 - Mock route/place providers 우선 동작
+- 도보 접근 시간에 횡단보도 대기 시간을 포함한 현실 소요시간 안내
 - 인메모리 프로필 저장소
 - 모든 사용자 응답 한국어
 - 출발지가 없으면 현재 위치를 추측하지 않고 출발지만 질문

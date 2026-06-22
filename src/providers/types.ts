@@ -11,6 +11,8 @@ export interface RouteOption {
   alightAt: string;
   firstWalkMinutes: number;
   lastWalkMinutes: number;
+  crossingsToStop?: number;
+  crossingsFromStop?: number;
   fareKrw?: number;
   taxiFareKrw?: number;
   missedFallback?: string;
