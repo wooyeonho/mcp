@@ -1,27 +1,27 @@
 import type { GoodRouteRequest, GoodRouteSuggestion, RouteOption, RouteProvider, RouteRequest, WeatherContext } from "./types.js";
 
 interface RouteFixture {
-  match: (origin: string, destination: string) => boolean;
+  match: (o: string, d: string) => boolean;
   routes: (req: RouteRequest) => RouteOption[];
   good: (req: GoodRouteRequest) => GoodRouteSuggestion;
 }
 
 const fixtures: RouteFixture[] = [
+  // ── 강남 → 신림 ──
   {
     match: (o, d) => o.includes("강남") && d.includes("신림"),
     routes: () => [
       { mode: "subway", durationMinutes: 38, line: "2호선", direction: "신림 방면", boardAt: "강남역", alightAt: "신림역", firstWalkMinutes: 5, lastWalkMinutes: 6, crossingsToStop: 1, crossingsFromStop: 1, fareKrw: 1550, missedFallback: "다음 열차 4~6분 뒤 출발합니다. 2호선 배차가 짧으니 걱정 마세요." },
-      { mode: "bus", durationMinutes: 47, busNumber: "146번", boardAt: "강남역 정류장", alightAt: "신림역 정류장", firstWalkMinutes: 4, lastWalkMinutes: 7, crossingsToStop: 2, crossingsFromStop: 1, fareKrw: 1500, missedFallback: "146번을 놓치면 5008번으로 전환하세요. 배차 7분입니다." },
+      { mode: "bus", durationMinutes: 47, busNumber: "146번", boardAt: "강남역 정류장", alightAt: "신림역 정류장", firstWalkMinutes: 4, lastWalkMinutes: 7, crossingsToStop: 2, crossingsFromStop: 1, fareKrw: 1500, missedFallback: "146번 놓치면 5008번으로 전환하세요. 배차 7분입니다." },
       { mode: "taxi", durationMinutes: 32, boardAt: "강남역 2번 출구", alightAt: "신림역", firstWalkMinutes: 1, lastWalkMinutes: 1, crossingsToStop: 0, crossingsFromStop: 0, taxiFareKrw: 18000, missedFallback: "택시가 안 잡히면 바로 지하철로 전환하세요." },
     ],
     good: (req) => {
-      const isCafe = !req.placeType || req.placeType === "cafe" || req.mood === "romantic";
-      const isWalk = req.placeType === "walk";
-      if (isWalk) return { concept: "강남역에서 한 정거장 전부터 천천히 걸어보는 코스", stopBy: "서초 이면도로 → 남부순환 산책길 → 신림역", detour: "큰길 대신 골목길로 한 블록 우회", extraMinutesRange: [8, 14], reason: "뛰지 않고 천천히 걸으면 머리가 환기됩니다.", finalAction: "오늘은 이어폰 끼고 천천히 걸어가세요. 10분이면 기분이 바뀝니다." };
-      if (isCafe) return { concept: "바로 집 가지 말고 조용한 카페를 한 번 들르는 길", stopBy: "강남역 뒤편 조용한 카페 → 2호선 → 신림역", detour: "집 가는 방향에서 약 6분만 우회", extraMinutesRange: [6, 10], reason: "퇴근 피로를 줄이고 대화하기 좋은 분위기라서요.", finalAction: "오늘은 카페 하나 들렀다가 지하철 타세요. 마음이 풀립니다." };
-      return { concept: "덮밥 한 그릇 뚝딱하고 가는 길", stopBy: "강남역 지하상가 혼밥집 → 2호선 → 신림역", detour: "강남역에서 식사 후 바로 탑승", extraMinutesRange: [15, 22], reason: "빈속에 집 가면 또 배달 시킵니다. 역에서 해결하세요.", finalAction: "지하상가 덮밥집에서 10분이면 끝납니다. 먹고 타세요." };
+      if (req.placeType === "walk") return { concept: "강남역 한 정거장 전부터 천천히 걸어보는 코스", stopBy: "서초 이면도로 → 남부순환 산책길 → 신림역", detour: "큰길 대신 골목길로 한 블록 우회", extraMinutesRange: [8, 14], reason: "뛰지 않고 천천히 걸으면 머리가 환기됩니다.", finalAction: "오늘은 이어폰 끼고 천천히 걸어가세요. 10분이면 기분이 바뀝니다." };
+      if (req.placeType === "restaurant") return { concept: "덮밥 한 그릇 뚝딱하고 가는 길", stopBy: "강남역 지하상가 혼밥집 → 2호선 → 신림역", detour: "강남역에서 식사 후 바로 탑승", extraMinutesRange: [15, 22], reason: "빈속에 집 가면 또 배달 시킵니다. 역에서 해결하세요.", finalAction: "지하상가 덮밥집에서 10분이면 끝납니다. 먹고 타세요." };
+      return { concept: "바로 집 가지 말고 조용한 카페를 한 번 들르는 길", stopBy: "강남역 뒤편 조용한 카페 → 2호선 → 신림역", detour: "집 가는 방향에서 약 6분만 우회", extraMinutesRange: [6, 10], reason: "퇴근 피로를 줄이고 대화하기 좋은 분위기라서요.", finalAction: "오늘은 카페 하나 들렀다가 지하철 타세요. 마음이 풀립니다." };
     },
   },
+  // ── 신림 → 강남 ──
   {
     match: (o, d) => o.includes("신림") && d.includes("강남"),
     routes: () => [
@@ -31,8 +31,9 @@ const fixtures: RouteFixture[] = [
     ],
     good: () => ({ concept: "출근길에 커피 한 잔 여유", stopBy: "신림역 인근 카페 → 2호선 → 강남역", detour: "역 근처 테이크아웃 카페 들렀다 바로 탑승", extraMinutesRange: [5, 8], reason: "빈속에 출근하면 오전 집중이 떨어집니다.", finalAction: "오늘은 커피 하나 들고 타세요. 5분이면 됩니다." }),
   },
+  // ── 강남 → 홍대입구 ──
   {
-    match: (o, d) => o.includes("강남") && d.includes("홍대"),
+    match: (o, d) => o.includes("강남") && (d.includes("홍대") || d.includes("합정")),
     routes: () => [
       { mode: "subway", durationMinutes: 28, line: "2호선", direction: "홍대입구 방면", boardAt: "강남역", alightAt: "홍대입구역", firstWalkMinutes: 4, lastWalkMinutes: 3, crossingsToStop: 1, crossingsFromStop: 1, fareKrw: 1550, missedFallback: "2호선 내선순환 다음 열차 3분 뒤입니다." },
       { mode: "bus", durationMinutes: 42, busNumber: "472번", boardAt: "강남역 정류장", alightAt: "홍대입구 정류장", firstWalkMinutes: 5, lastWalkMinutes: 5, crossingsToStop: 2, crossingsFromStop: 1, fareKrw: 1500, missedFallback: "472번 놓치면 지하철로 전환하세요. 더 빠릅니다." },
@@ -40,11 +41,52 @@ const fixtures: RouteFixture[] = [
     ],
     good: (req) => {
       if (req.placeType === "restaurant") return { concept: "약속 전에 혼밥 한 끼 해결하는 길", stopBy: "강남역 인근 혼밥집 → 2호선 → 홍대입구", detour: "강남에서 먹고 바로 지하철 탑승", extraMinutesRange: [12, 18], reason: "약속에서 배고프면 집중이 안 됩니다. 미리 한 끼 해결하세요.", finalAction: "역 지하상가 덮밥 10분이면 끝납니다. 먹고 출발하세요." };
-      return { concept: "2호선 타고 가면서 합정 근처 카페 한 잔", stopBy: "강남역 → 2호선 → 합정 카페 → 홍대입구", detour: "한 정거장 전 하차 후 걸어가기", extraMinutesRange: [8, 12], reason: "홍대 도착 전에 분위기 전환 한 번 하면 좋습니다.", finalAction: "합정에서 내려서 걸어가세요. 거리 분위기가 좋습니다." };
+      return { concept: "2호선 타고 합정 카페 들렀다 걸어가는 코스", stopBy: "강남역 → 2호선 → 합정 카페 → 홍대입구", detour: "한 정거장 전 하차 후 걸어가기", extraMinutesRange: [8, 12], reason: "홍대 도착 전에 분위기 전환 한 번 하면 좋습니다.", finalAction: "합정에서 내려서 걸어가세요. 거리 분위기가 좋습니다." };
     },
   },
+  // ── 여의도 → 강남 ──
   {
-    match: (_o, d) => d.includes("병원") || d.includes("의료"),
+    match: (o, d) => o.includes("여의도") && d.includes("강남"),
+    routes: () => [
+      { mode: "subway", durationMinutes: 22, line: "9호선", direction: "봉은사 방면", boardAt: "여의도역", alightAt: "신논현역", firstWalkMinutes: 4, lastWalkMinutes: 5, crossingsToStop: 1, crossingsFromStop: 1, fareKrw: 1550, missedFallback: "9호선 급행 다음 열차 4분 뒤입니다." },
+      { mode: "bus", durationMinutes: 35, busNumber: "461번", boardAt: "여의도 정류장", alightAt: "강남역 정류장", firstWalkMinutes: 4, lastWalkMinutes: 5, crossingsToStop: 1, crossingsFromStop: 1, fareKrw: 1500, missedFallback: "461번 놓치면 9호선으로 전환하세요." },
+      { mode: "taxi", durationMinutes: 18, boardAt: "여의도역 3번 출구", alightAt: "강남역", firstWalkMinutes: 1, lastWalkMinutes: 1, crossingsToStop: 0, crossingsFromStop: 0, taxiFareKrw: 13000, missedFallback: "택시 안 잡히면 9호선 급행이 가장 빠릅니다." },
+    ],
+    good: () => ({ concept: "여의도 한강공원 잠깐 들렀다가 지하철 타는 길", stopBy: "여의도 한강공원 10분 산책 → 9호선 → 신논현역", detour: "한강공원 방향으로 5분 우회", extraMinutesRange: [10, 15], reason: "퇴근길에 한강 보고 나면 피로가 줄어듭니다.", finalAction: "오늘은 한강 한 바퀴 돌고 타세요. 기분이 달라집니다." }),
+  },
+  // ── 서울역 방면 ──
+  {
+    match: (o, d) => d.includes("서울역") || o.includes("서울역"),
+    routes: (req) => [
+      { mode: "subway", durationMinutes: 30, line: "1호선/4호선", direction: `${req.destination} 방면`, boardAt: `${req.origin} 인근역`, alightAt: "서울역", firstWalkMinutes: 4, lastWalkMinutes: 5, crossingsToStop: 1, crossingsFromStop: 1, fareKrw: 1550, missedFallback: "1호선/4호선 다음 열차 5분 내입니다." },
+      { mode: "bus", durationMinutes: 38, busNumber: "간선버스", boardAt: `${req.origin} 정류장`, alightAt: "서울역 정류장", firstWalkMinutes: 4, lastWalkMinutes: 6, crossingsToStop: 1, crossingsFromStop: 1, fareKrw: 1500, missedFallback: "다음 버스 기다리거나 지하철로 전환하세요." },
+      { mode: "taxi", durationMinutes: 20, boardAt: req.origin, alightAt: "서울역", firstWalkMinutes: 1, lastWalkMinutes: 1, crossingsToStop: 0, crossingsFromStop: 0, taxiFareKrw: 12000, missedFallback: "KTX 시간 촉박하면 바로 택시 타세요." },
+    ],
+    good: () => ({ concept: "서울역 가기 전 광화문 광장 잠깐 지나는 코스", stopBy: "광화문 광장 경유 → 서울역", detour: "광화문 방향으로 살짝 우회", extraMinutesRange: [5, 8], reason: "광화문 야경이 좋습니다.", finalAction: "광화문 광장 지나서 서울역 가세요. 분위기가 좋습니다." }),
+  },
+  // ── 잠실 방면 ──
+  {
+    match: (o, d) => d.includes("잠실") || o.includes("잠실"),
+    routes: (req) => [
+      { mode: "subway", durationMinutes: 35, line: "2호선", direction: "잠실 방면", boardAt: `${req.origin} 인근역`, alightAt: "잠실역", firstWalkMinutes: 5, lastWalkMinutes: 5, crossingsToStop: 1, crossingsFromStop: 1, fareKrw: 1550, missedFallback: "2호선 다음 열차 4분 내입니다." },
+      { mode: "bus", durationMinutes: 45, busNumber: "3216번", boardAt: `${req.origin} 정류장`, alightAt: "잠실역 정류장", firstWalkMinutes: 4, lastWalkMinutes: 6, crossingsToStop: 1, crossingsFromStop: 1, fareKrw: 1500, missedFallback: "3216번 놓치면 지하철로 전환하세요." },
+      { mode: "taxi", durationMinutes: 25, boardAt: req.origin, alightAt: "잠실역", firstWalkMinutes: 1, lastWalkMinutes: 1, crossingsToStop: 0, crossingsFromStop: 0, taxiFareKrw: 16000, missedFallback: "택시 안 잡히면 지하철이 확실합니다." },
+    ],
+    good: () => ({ concept: "잠실 석촌호수 산책 후 들어가는 코스", stopBy: "석촌호수 한 바퀴 → 잠실역", detour: "호수 방향으로 10분 우회", extraMinutesRange: [10, 15], reason: "석촌호수 야경이 서울에서 제일 예쁩니다.", finalAction: "석촌호수 한 바퀴 돌고 들어가세요. 10분이면 됩니다." }),
+  },
+  // ── 성수/건대 방면 ──
+  {
+    match: (o, d) => d.includes("성수") || d.includes("건대") || o.includes("성수") || o.includes("건대"),
+    routes: (req) => [
+      { mode: "subway", durationMinutes: 32, line: "2호선", direction: "성수 방면", boardAt: `${req.origin} 인근역`, alightAt: `${req.destination.includes("성수") ? "성수역" : "건대입구역"}`, firstWalkMinutes: 4, lastWalkMinutes: 5, crossingsToStop: 1, crossingsFromStop: 1, fareKrw: 1550, missedFallback: "2호선 다음 열차 4분 내입니다." },
+      { mode: "bus", durationMinutes: 42, busNumber: "302번", boardAt: `${req.origin} 정류장`, alightAt: `${req.destination} 정류장`, firstWalkMinutes: 4, lastWalkMinutes: 6, crossingsToStop: 1, crossingsFromStop: 1, fareKrw: 1500, missedFallback: "302번 놓치면 지하철로 전환하세요." },
+      { mode: "taxi", durationMinutes: 22, boardAt: req.origin, alightAt: req.destination, firstWalkMinutes: 1, lastWalkMinutes: 1, crossingsToStop: 0, crossingsFromStop: 0, taxiFareKrw: 14000, missedFallback: "택시 안 잡히면 지하철이 빠릅니다." },
+    ],
+    good: () => ({ concept: "성수동 카페거리 한 잔 하고 들어가는 코스", stopBy: "성수동 카페거리 → 성수역", detour: "성수역 2번 출구 방향 5분 우회", extraMinutesRange: [8, 12], reason: "성수동 카페 분위기가 서울에서 가장 힙합니다.", finalAction: "성수동 카페 한 잔 하고 들어가세요. 후회 없습니다." }),
+  },
+  // ── 병원 방면 ──
+  {
+    match: (_o, d) => d.includes("병원") || d.includes("의원") || d.includes("의료"),
     routes: (req) => [
       { mode: "subway", durationMinutes: 42, line: "2호선+환승", direction: `${req.destination} 방면`, boardAt: `${req.origin} 인근역`, alightAt: `${req.destination} 인근역`, firstWalkMinutes: 5, lastWalkMinutes: 8, crossingsToStop: 1, crossingsFromStop: 2, fareKrw: 1550, missedFallback: "다음 열차로 탑승하세요. 환승 포함 5분 지연됩니다." },
       { mode: "bus", durationMinutes: 50, busNumber: "간선버스", boardAt: `${req.origin} 정류장`, alightAt: `${req.destination} 정류장`, firstWalkMinutes: 4, lastWalkMinutes: 10, crossingsToStop: 1, crossingsFromStop: 2, fareKrw: 1500, missedFallback: "다음 버스 기다리거나 지하철로 전환하세요." },
@@ -52,6 +94,20 @@ const fixtures: RouteFixture[] = [
     ],
     good: () => ({ concept: "병원 전에 마음 정리하는 산책 코스", stopBy: "인근 공원 산책 → 병원", detour: "병원 근처 조용한 길로 우회", extraMinutesRange: [8, 12], reason: "병원 가기 전 마음이 급하면 대기 시간이 더 길게 느껴집니다.", finalAction: "10분 일찍 나와서 천천히 걸어가세요. 대기 시간에 마음이 편합니다." }),
   },
+  // ── 공항 방면 ──
+  {
+    match: (_o, d) => d.includes("공항") || d.includes("인천") || d.includes("김포"),
+    routes: (req) => {
+      const isIncheon = req.destination.includes("인천");
+      return [
+        { mode: "subway", durationMinutes: isIncheon ? 65 : 40, line: isIncheon ? "공항철도" : "5호선/9호선", direction: `${req.destination} 방면`, boardAt: `${req.origin} 인근역`, alightAt: req.destination, firstWalkMinutes: 5, lastWalkMinutes: 8, crossingsToStop: 1, crossingsFromStop: 1, fareKrw: isIncheon ? 9500 : 2050, missedFallback: `다음 ${isIncheon ? "공항철도" : "지하철"} 이용하세요. 여유 시간 확인하세요.` },
+        { mode: "bus", durationMinutes: isIncheon ? 70 : 45, busNumber: isIncheon ? "공항리무진" : "간선버스", boardAt: `${req.origin} 정류장`, alightAt: `${req.destination} 정류장`, firstWalkMinutes: 5, lastWalkMinutes: 5, crossingsToStop: 1, crossingsFromStop: 1, fareKrw: isIncheon ? 15000 : 1800, missedFallback: "공항버스 놓치면 공항철도로 전환하세요." },
+        { mode: "taxi", durationMinutes: isIncheon ? 55 : 35, boardAt: req.origin, alightAt: req.destination, firstWalkMinutes: 1, lastWalkMinutes: 1, crossingsToStop: 0, crossingsFromStop: 0, taxiFareKrw: isIncheon ? 65000 : 35000, missedFallback: "비행기 시간 촉박하면 바로 택시 타세요." },
+      ];
+    },
+    good: () => ({ concept: "공항 가기 전 마지막 한국 음식 한 끼", stopBy: "인근 한식당 → 공항", detour: "공항 방향 경로에서 약 15분 우회", extraMinutesRange: [15, 20], reason: "출국 전 마지막 한국 음식이 제일 맛있습니다.", finalAction: "출발 전 한 끼 챙겨가세요. 공항 밥은 비쌉니다." }),
+  },
+  // ── fallback (모든 미지원 경로) ──
   {
     match: () => true,
     routes: (req) => [
@@ -60,8 +116,12 @@ const fixtures: RouteFixture[] = [
       { mode: "taxi", durationMinutes: 25, boardAt: req.origin, alightAt: req.destination, firstWalkMinutes: 1, lastWalkMinutes: 1, crossingsToStop: 0, crossingsFromStop: 0, taxiFareKrw: 16000, missedFallback: "택시가 안 잡히면 지하철이 확실합니다." },
     ],
     good: (req) => {
-      const isCafe = !req.placeType || req.placeType === "cafe" || req.mood === "romantic";
-      if (isCafe) return { concept: "한 잔 여유를 챙기고 가는 길", stopBy: `${req.origin} 인근 카페 → 이동 → ${req.destination}`, detour: "출발지 근처 카페 한 잔 후 탑승", extraMinutesRange: [6, 10], reason: "여유 5분이 하루를 바꿉니다.", finalAction: "카페 들렀다 출발하세요. 기분이 달라집니다." };
+      if (req.placeType === "cafe" || req.mood === "romantic") {
+        return { concept: "한 잔 여유를 챙기고 가는 길", stopBy: `${req.origin} 인근 카페 → 이동 → ${req.destination}`, detour: "출발지 근처 카페 한 잔 후 탑승", extraMinutesRange: [6, 10], reason: "여유 5분이 하루를 바꿉니다.", finalAction: "카페 들렀다 출발하세요. 기분이 달라집니다." };
+      }
+      if (req.placeType === "restaurant") {
+        return { concept: "출출하면 먹고 가는 길", stopBy: `${req.origin} 인근 식당 → ${req.destination}`, detour: "출발 전 15분만 투자", extraMinutesRange: [12, 18], reason: "배고픈 채로 이동하면 집중력이 떨어집니다.", finalAction: "간단히 한 끼 해결하고 출발하세요." };
+      }
       return { concept: "큰길 대신 골목으로 걸어보는 코스", stopBy: `${req.origin} → 이면도로 산책 → ${req.destination}`, detour: "차도 적은 골목으로 짧게 우회", extraMinutesRange: [8, 14], reason: "조금만 돌아가면 소음이 확 줄어듭니다.", finalAction: "이어폰 끼고 골목길로 걸어가세요. 10분이면 충분합니다." };
     },
   },
@@ -70,14 +130,18 @@ const fixtures: RouteFixture[] = [
 function applyWeatherContext(options: RouteOption[], weather?: WeatherContext): RouteOption[] {
   if (!weather || weather === "clear") return options;
   if (weather === "rain") {
-    return options.map((o) => o.mode === "taxi"
-      ? { ...o, missedFallback: "비 오는 날은 택시 대기가 길어집니다. 5분 안에 안 잡히면 지하철로 전환하세요." }
-      : { ...o, firstWalkMinutes: o.firstWalkMinutes + 2, missedFallback: `${o.missedFallback} 비 올 때는 미끄러우니 여유 있게 이동하세요.` });
+    return options.map((o) =>
+      o.mode === "taxi"
+        ? { ...o, missedFallback: "비 오는 날은 택시 대기가 길어집니다. 5분 안에 안 잡히면 지하철로 전환하세요." }
+        : { ...o, firstWalkMinutes: o.firstWalkMinutes + 2, missedFallback: `${o.missedFallback} 비 올 때는 미끄러우니 여유 있게 이동하세요.` },
+    );
   }
   if (weather === "snow") {
-    return options.map((o) => o.mode === "taxi"
-      ? { ...o, durationMinutes: o.durationMinutes + 10, missedFallback: "눈 오는 날은 도로가 느립니다. 지하철이 더 확실합니다." }
-      : { ...o, firstWalkMinutes: o.firstWalkMinutes + 3, missedFallback: `${o.missedFallback} 눈길 조심하세요. 여유 있게 걸으세요.` });
+    return options.map((o) =>
+      o.mode === "taxi"
+        ? { ...o, durationMinutes: o.durationMinutes + 10, missedFallback: "눈 오는 날은 도로가 느립니다. 지하철이 더 확실합니다." }
+        : { ...o, firstWalkMinutes: o.firstWalkMinutes + 3, missedFallback: `${o.missedFallback} 눈길 조심하세요. 여유 있게 걸으세요.` },
+    );
   }
   return options;
 }

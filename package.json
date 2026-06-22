@@ -1,6 +1,6 @@
 {
   "name": "oneulgil-mcp",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "오늘길 KakaoTalk-native mobility decision MCP server for PlayMCP.",
   "type": "module",
   "main": "dist/index.js",
