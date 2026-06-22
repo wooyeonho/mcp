@@ -54,11 +54,13 @@ npm start
 
 ## 로컬 데모 테스트
 
-아래 스크립트는 mock provider로 핵심 contest demo를 확인합니다.
+아래 스크립트는 mock provider demo, 핵심 assertion, HTTP/CORS protocol smoke test를 확인합니다.
 
 ```bash
 npm run test:demo
 npm run test:assertions
+npm run test:protocol
+npm run test:all
 ```
 
 확인 시나리오:

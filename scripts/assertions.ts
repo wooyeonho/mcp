@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { resolveIntent } from "../src/core/resolveIntent.js";
 import { parseKoreanArrivalTime } from "../src/core/timeParser.js";
-import { estimateWalking } from "../src/core/walkingEstimator.js";
+import { estimateWalking, estimateWalkWithCrossings } from "../src/core/walkingEstimator.js";
 import { MockPlaceProvider } from "../src/providers/mockPlaceProvider.js";
 import { MockRouteProvider } from "../src/providers/mockRouteProvider.js";
 import { getFastestRouteAction } from "../src/tools/getFastestRouteAction.js";
 import { getGoodRoute } from "../src/tools/getGoodRoute.js";
 import { saveUserPlaces } from "../src/tools/saveUserPlaces.js";
+import { getProfile, saveProfile } from "../src/storage/profileStore.js";
 
 let count = 0;
 function check(name: string, condition: unknown) {
@@ -50,6 +51,30 @@ check("short fast needs origin", hurry.needs === "origin");
 const late = resolveIntent("약속 늦었어", profile);
 check("late asks destination", late.needs === "destination");
 
+
+const userA = `assertion-user-a-${Date.now()}`;
+const userB = `assertion-user-b-${Date.now()}`;
+saveProfile({ home: "신림역 A", work: "강남역 A" }, userA);
+saveProfile({ home: "사당역 B", work: "여의도 B" }, userB);
+check("user A isolated home", getProfile(userA).home === "신림역 A");
+check("user A isolated work", getProfile(userA).work === "강남역 A");
+check("user B isolated home", getProfile(userB).home === "사당역 B");
+check("user B isolated work", getProfile(userB).work === "여의도 B");
+
+const naturalLeave = resolveIntent("슬슬 퇴근할까", profile);
+check("natural leave origin", naturalLeave.origin === profile.work);
+check("natural leave destination", naturalLeave.destination === profile.home);
+const naturalCommute = resolveIntent("이제 출근해야겠다", profile);
+check("natural commute origin", naturalCommute.origin === profile.home);
+check("natural commute destination", naturalCommute.destination === profile.work);
+
+const crossingWalk = estimateWalkWithCrossings(5, 1);
+check("crossing wait seconds", crossingWalk.waitSeconds === 40);
+check("crossing actual minutes", crossingWalk.actualMinutes === 6);
+const twoCrossings = estimateWalkWithCrossings(4, 2);
+check("two crossings wait", twoCrossings.waitSeconds === 80);
+check("two crossings actual", twoCrossings.actualMinutes === 6);
+
 const parsed = parseKoreanArrivalTime("3시까지", new Date("2026-06-21T05:00:00.000Z"));
 check("time parsed", parsed instanceof Date);
 check("time future", parsed!.getTime() > new Date("2026-06-21T05:00:00.000Z").getTime());
@@ -63,6 +88,9 @@ check("three route options", options.length === 3);
 check("subway fixture", options.some((o) => o.mode === "subway" && o.line === "2호선"));
 check("bus fixture", options.some((o) => o.mode === "bus" && o.busNumber === "146번"));
 check("taxi fixture", options.some((o) => o.mode === "taxi" && o.taxiFareKrw === 18000));
+const noTaxiOptions = await route.getRouteOptions({ origin: profile.work, destination: profile.home, includeTaxi: false });
+check("no taxi option count", noTaxiOptions.length === 2);
+check("no taxi option excludes taxi", noTaxiOptions.every((o) => o.mode !== "taxi"));
 const places = await place.findAlongRoute(profile.work, profile.home, "restaurant");
 check("restaurant place", places[0].type === "restaurant");
 includes("restaurant note", places[0].note, "역");
@@ -73,6 +101,10 @@ includes("fastest action", fastest, "최종 행동");
 includes("fastest missed", fastest, "놓치면");
 includes("fastest subway", fastest, "2호선");
 includes("fastest comparison", fastest, "비교");
+includes("fastest crossing detail", fastest, "횡단보도");
+includes("fastest realistic walk", fastest, "실제 약");
+includes("fastest crossing comparison", fastest, "횡단대기 포함");
+includes("fastest arrival", fastest, "예상 도착");
 const rainy = await getFastestRouteAction({ query: "비 오는데 퇴근" }, route);
 includes("rainy response", rainy, "비 오는 날 기준");
 const missingOrigin = await getFastestRouteAction({ query: "강남역 빨리" }, route);
@@ -83,6 +115,10 @@ const good = await getGoodRoute({ query: "퇴근 낭만" }, route, place);
 includes("good route concept", good, "코스");
 const food = await getGoodRoute({ query: "약속 전에 혼밥", origin: profile.work, destination: "홍대입구" }, route, place);
 includes("food route", food, "restaurant");
+const emptyPlaceProvider = { findAlongRoute: async () => [] };
+const fallbackGood = await getGoodRoute({ query: "퇴근 낭만" }, route, emptyPlaceProvider, undefined);
+includes("empty place fallback name", fallbackGood, "실시간 확인 필요");
+includes("empty place fallback note", fallbackGood, "장소 데이터가 비어");
 
-check("exact assertion count", count === 39);
+check("exact assertion count", count === 59);
 console.log(`${count} assertions passed`);
