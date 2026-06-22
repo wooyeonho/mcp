@@ -58,7 +58,7 @@ export function createHttpApp() {
     service: "oneulgil-mcp",
     version: "0.2.0",
     tools: ["save_user_places", "get_fastest_route_action", "get_good_route"],
-    features: ["weather_context", "urgency_detection", "recent_destination", "fixture_routing", "per_session_profile", "file_persistence"],
+    features: ["weather_context", "urgency_detection", "recent_destination", "fixture_routing", "per_session_profile", "file_persistence", "crosswalk_time"],
   }));
 
   const transports: Record<string, StreamableHTTPServerTransport> = {};

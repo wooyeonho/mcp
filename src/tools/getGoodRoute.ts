@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { askClarification } from "../core/clarification.js";
 import { resolveIntent } from "../core/resolveIntent.js";
+import { crossingSummary, realWalkMinutes } from "../core/walkingEstimator.js";
 import type { PlaceProvider, RouteProvider } from "../providers/types.js";
 import { getProfile, rememberDestination } from "../storage/profileStore.js";
 
@@ -47,6 +48,18 @@ export async function getGoodRoute(input: z.infer<z.ZodObject<typeof goodRouteSc
     // 이유
     lines.push(suggestion.reason);
     lines.push("");
+
+    // 횡단보도 정보 (직행 경로 기준)
+    const baseOptions = await routeProvider.getRouteOptions({ origin: intent.origin!, destination: intent.destination! });
+    const baseRoute = baseOptions.find((o) => o.mode === "subway") ?? baseOptions[0];
+    const toC = baseRoute?.crossingsToStop ?? 0;
+    const fromC = baseRoute?.crossingsFromStop ?? 0;
+    const crossingNote = crossingSummary(toC, fromC);
+    if (baseRoute && crossingNote) {
+      const realTotal = Math.round(realWalkMinutes(baseRoute.firstWalkMinutes, toC) + baseRoute.durationMinutes + realWalkMinutes(baseRoute.lastWalkMinutes, fromC));
+      lines.push(`참고: 직행 시 현실 소요시간 약 ${realTotal}분 (${crossingNote})`);
+      lines.push("");
+    }
 
     // 3. 대안
     lines.push("시간 없으면:");

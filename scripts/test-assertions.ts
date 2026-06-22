@@ -112,6 +112,15 @@ assert(u1Profile.includes("강남역"), "멀티유저: U1은 강남역 출발");
 assert(u3Profile.includes("합정역"), "멀티유저: U3은 합정역 출발");
 assert(!u1Profile.includes("합정역"), "멀티유저: U1에 합정역 안 섞임");
 
+// === 횡단보도 현실 소요시간 ===
+assert(goHome.includes("횡단보도"), "횡단보도: 퇴근 응답에 횡단보도 언급");
+assert(goHome.includes("현실 총 소요시간"), "횡단보도: 현실 총 소요시간 표시");
+assert(goHome.includes("실제 약"), "횡단보도: 실제 약 N분 표현");
+
+const crossingGood = await getGoodRoute({ query: "퇴근 낭만" }, route, place, U);
+assert(crossingGood.includes("횡단보도"), "횡단보도: 좋은길에도 횡단보도 참고");
+assert(crossingGood.includes("현실 소요시간"), "횡단보도: 좋은길 현실 소요시간");
+
 console.log(`\n${"=".repeat(50)}`);
 console.log(`결과: ${pass} PASS / ${fail} FAIL / ${pass + fail} TOTAL`);
 console.log(`${"=".repeat(50)}`);
