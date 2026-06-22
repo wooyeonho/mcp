@@ -1,7 +1,18 @@
 export type RouteMode = "subway" | "bus" | "taxi";
-
 export type WeatherContext = "rain" | "snow" | "clear";
-export interface RouteRequest { origin: string; destination: string; includeTaxi?: boolean; arrivalBy?: Date; weather?: WeatherContext; }
+
+export interface Coords { lat: number; lng: number; }
+
+export interface RouteRequest {
+  origin: string;
+  destination: string;
+  includeTaxi?: boolean;
+  arrivalBy?: Date;
+  weather?: WeatherContext;
+  originCoords?: Coords;
+  destCoords?: Coords;
+}
+
 export interface RouteOption {
   mode: RouteMode;
   durationMinutes: number;
@@ -17,10 +28,42 @@ export interface RouteOption {
   fareKrw?: number;
   taxiFareKrw?: number;
   missedFallback?: string;
+  destCoords?: Coords;
 }
-export interface GoodRouteRequest { origin: string; destination: string; mood?: string; placeType?: PlaceType; maxExtraMinutes?: number; }
+
+export interface GoodRouteRequest {
+  origin: string;
+  destination: string;
+  mood?: string;
+  placeType?: PlaceType;
+  maxExtraMinutes?: number;
+  originCoords?: Coords;
+  destCoords?: Coords;
+}
+
 export type PlaceType = "cafe" | "restaurant" | "walk" | "dessert" | "any";
-export interface GoodRouteSuggestion { concept: string; stopBy: string; detour: string; extraMinutesRange: [number, number]; reason: string; finalAction: string; }
-export interface RouteProvider { getRouteOptions(req: RouteRequest): Promise<RouteOption[]>; getGoodRoute(req: GoodRouteRequest): Promise<GoodRouteSuggestion>; }
-export interface PlaceSuggestion { name: string; type: PlaceType; note: string; extraMinutes: number; }
-export interface PlaceProvider { findAlongRoute(origin: string, destination: string, type: PlaceType): Promise<PlaceSuggestion[]>; }
+
+export interface GoodRouteSuggestion {
+  concept: string;
+  stopBy: string;
+  detour: string;
+  extraMinutesRange: [number, number];
+  reason: string;
+  finalAction: string;
+}
+
+export interface RouteProvider {
+  getRouteOptions(req: RouteRequest): Promise<RouteOption[]>;
+  getGoodRoute(req: GoodRouteRequest): Promise<GoodRouteSuggestion>;
+}
+
+export interface PlaceSuggestion {
+  name: string;
+  type: PlaceType;
+  note: string;
+  extraMinutes: number;
+}
+
+export interface PlaceProvider {
+  findAlongRoute(origin: string, destination: string, type: PlaceType): Promise<PlaceSuggestion[]>;
+}

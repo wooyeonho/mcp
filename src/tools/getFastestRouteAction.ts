@@ -3,19 +3,70 @@ import { askClarification } from "../core/clarification.js";
 import { resolveIntent } from "../core/resolveIntent.js";
 import { formatSeoulTime, parseKoreanArrivalTime } from "../core/timeParser.js";
 import { estimateWalking, crossingSummary, realWalkMinutes } from "../core/walkingEstimator.js";
-import type { RouteProvider } from "../providers/types.js";
+import { geocodePlace } from "../providers/kakaoLocalProvider.js";
+import type { RouteProvider, WeatherContext } from "../providers/types.js";
 import { getProfile, rememberDestination } from "../storage/profileStore.js";
 
-export const fastestSchema = { query: z.string(), origin: z.string().optional(), destination: z.string().optional(), arrivalBy: z.string().optional(), includeTaxi: z.boolean().optional(), currentLocation: z.string().optional() };
+export const fastestSchema = {
+  query: z.string(),
+  origin: z.string().optional(),
+  destination: z.string().optional(),
+  arrivalBy: z.string().optional(),
+  includeTaxi: z.boolean().optional(),
+  currentLocation: z.string().optional(),
+};
 
-export async function getFastestRouteAction(input: z.infer<z.ZodObject<typeof fastestSchema>>, routeProvider: RouteProvider, userId: string) {
+type WeatherFn = () => Promise<WeatherContext>;
+
+function kakaoMapLink(name: string, lat: number, lng: number): string {
+  return `https://map.kakao.com/link/to/${encodeURIComponent(name)},${lat},${lng}`;
+}
+
+function kakaoNaviLink(destName: string, destLat: number, destLng: number): string {
+  return `https://map.kakao.com/link/to/${encodeURIComponent(destName)},${destLat},${destLng}`;
+}
+
+export async function getFastestRouteAction(
+  input: z.infer<z.ZodObject<typeof fastestSchema>>,
+  routeProvider: RouteProvider,
+  userId: string,
+  fetchWeather?: WeatherFn,
+): Promise<string> {
   try {
     const profile = getProfile(userId);
-    const intent = resolveIntent(input.query, profile, { origin: input.origin ?? input.currentLocation, destination: input.destination, arrivalBy: input.arrivalBy ? parseKoreanArrivalTime(input.arrivalBy) : undefined });
+    const intent = resolveIntent(input.query, profile, {
+      origin: input.origin ?? input.currentLocation,
+      destination: input.destination,
+      arrivalBy: input.arrivalBy ? parseKoreanArrivalTime(input.arrivalBy) : undefined,
+    });
     if (intent.needs) return askClarification(intent.needs, input.query.includes("퇴근") ? "퇴근길" : undefined);
 
-    const options = await routeProvider.getRouteOptions({ origin: intent.origin!, destination: intent.destination!, includeTaxi: input.includeTaxi, arrivalBy: intent.arrivalBy, weather: intent.weather });
+    // Auto-detect real Seoul weather if not mentioned in query
+    let weather = intent.weather;
+    let autoWeatherNote = "";
+    if (!weather && fetchWeather) {
+      weather = await fetchWeather();
+      if (weather !== "clear") {
+        autoWeatherNote = weather === "rain"
+          ? "현재 서울 날씨: 비 오는 중입니다."
+          : "현재 서울 날씨: 눈 오는 중입니다.";
+      }
+    }
+
+    const options = await routeProvider.getRouteOptions({
+      origin: intent.origin!,
+      destination: intent.destination!,
+      includeTaxi: input.includeTaxi,
+      arrivalBy: intent.arrivalBy,
+      weather: weather ?? intent.weather,
+    });
     rememberDestination(intent.destination!, userId);
+
+    // Geocode destination for deep links (uses known coords if available, else Kakao API)
+    const KAKAO_KEY = process.env.KAKAO_REST_API_KEY;
+    const destCoords =
+      options.find((o) => o.destCoords)?.destCoords ??
+      (await geocodePlace(intent.destination!, KAKAO_KEY));
 
     const practical = options.find((o) => o.mode === "subway") ?? options[0];
     const walk = estimateWalking(practical.firstWalkMinutes);
@@ -31,16 +82,24 @@ export async function getFastestRouteAction(input: z.infer<z.ZodObject<typeof fa
 
     const lines: string[] = [];
 
-    // Urgency check — if arrivalBy is tight or user says "늦었어"
-    const minutesLeft = intent.arrivalBy ? Math.round((intent.arrivalBy.getTime() - Date.now()) / 60000) : null;
+    const minutesLeft = intent.arrivalBy
+      ? Math.round((intent.arrivalBy.getTime() - Date.now()) / 60000)
+      : null;
     const isTight = minutesLeft !== null && minutesLeft < fastestOption.durationMinutes + 10;
     const isLate = intent.urgent || (minutesLeft !== null && minutesLeft < fastestOption.durationMinutes);
 
+    // Auto weather note (real-time, only if not user-specified)
+    if (autoWeatherNote) {
+      lines.push(autoWeatherNote);
+      lines.push("");
+    }
+
     // Weather prefix
-    if (intent.weather === "rain") {
+    const effectiveWeather = weather ?? intent.weather;
+    if (effectiveWeather === "rain") {
       lines.push("비 오는 날입니다. 도보 시간 +2분, 택시 대기 길어질 수 있습니다.");
       lines.push("");
-    } else if (intent.weather === "snow") {
+    } else if (effectiveWeather === "snow") {
       lines.push("눈 오는 날입니다. 도로 정체, 도보 미끄럼 주의하세요.");
       lines.push("");
     }
@@ -86,10 +145,10 @@ export async function getFastestRouteAction(input: z.infer<z.ZodObject<typeof fa
     }
     lines.push("");
 
-    // 현실 총 소요시간 (택시 추천 시에는 표시하지 않음)
+    // 현실 총 소요시간
     const crossingInfo = crossingSummary(toStopCrossings, fromStopCrossings);
     if (crossingInfo && !(isLate && taxi)) {
-      lines.push(`${crossingInfo}`);
+      lines.push(crossingInfo);
       lines.push(`현실 총 소요시간: 약 ${totalRealMinutes}분 (도보 + 횡단보도 대기 + 탑승 포함)`);
       lines.push("");
     }
@@ -110,6 +169,16 @@ export async function getFastestRouteAction(input: z.infer<z.ZodObject<typeof fa
       lines.push(practical.missedFallback ?? "다음 대안으로 바로 전환하세요.");
       if (taxi && fastestOption.mode !== "taxi") {
         lines.push(`급하면 택시로 전환하세요. ${taxi.durationMinutes}분, 약 ${taxi.taxiFareKrw?.toLocaleString("ko-KR")}원입니다.`);
+      }
+    }
+
+    // 4. 카카오 바로 이동 링크
+    if (destCoords) {
+      lines.push("");
+      lines.push("카카오 바로 이동:");
+      lines.push(`- 카카오맵 길찾기: ${kakaoNaviLink(intent.destination!, destCoords.lat, destCoords.lng)}`);
+      if (taxi) {
+        lines.push(`- 카카오T 택시: https://t.kakao.com/`);
       }
     }
 
