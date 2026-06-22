@@ -14,14 +14,14 @@ const TOOL_NAMES = ["save_user_places", "get_fastest_route_action", "get_good_ro
 
 function text(content: string) { return { content: [{ type: "text" as const, text: content }] }; }
 
-export function createMcpServer() {
+export function createMcpServer(userId = "default") {
   const mcp = new McpServer({ name: "오늘길 OneulGil", version: SERVICE_VERSION });
   const routeProvider = new MockRouteProvider();
   const placeProvider = new MockPlaceProvider();
 
-  mcp.tool("save_user_places", "집, 회사, 자주 가는 장소를 저장합니다.", saveUserPlacesSchema, async (input) => text(await saveUserPlaces(input)));
-  mcp.tool("get_fastest_route_action", "가장 빠른 행동 경로, 도착 시각, 늦음 회복, 대중교통/택시 비교가 필요할 때 사용합니다.", fastestSchema, async (input) => text(await getFastestRouteAction(input, routeProvider)));
-  mcp.tool("get_good_route", "낭만, 카페, 산책, 혼밥, 분위기, 돌아가는 길 등 기분 좋은 경로가 필요할 때 사용합니다.", goodRouteSchema, async (input) => text(await getGoodRoute(input, routeProvider, placeProvider)));
+  mcp.tool("save_user_places", "집, 회사, 자주 가는 장소를 저장합니다.", saveUserPlacesSchema, async (input) => text(await saveUserPlaces(input, userId)));
+  mcp.tool("get_fastest_route_action", "가장 빠른 행동 경로, 도착 시각, 늦음 회복, 대중교통/택시 비교가 필요할 때 사용합니다.", fastestSchema, async (input) => text(await getFastestRouteAction(input, routeProvider, userId)));
+  mcp.tool("get_good_route", "낭만, 카페, 산책, 혼밥, 분위기, 돌아가는 길 등 기분 좋은 경로가 필요할 때 사용합니다.", goodRouteSchema, async (input) => text(await getGoodRoute(input, routeProvider, placeProvider, userId)));
   return mcp;
 }
 
@@ -43,9 +43,11 @@ export function createHttpApp() {
       const sessionId = req.headers["mcp-session-id"] as string | undefined;
       let transport = sessionId ? transports[sessionId] : undefined;
       if (!transport && isInitializeRequest(req.body)) {
-        transport = new StreamableHTTPServerTransport({ sessionIdGenerator: () => randomUUID(), onsessioninitialized: (id) => { transports[id] = transport!; } });
+        const sessionUserId = randomUUID();
+        transport = new StreamableHTTPServerTransport({ sessionIdGenerator: () => sessionUserId, onsessioninitialized: (id) => { transports[id] = transport!; } });
         transport.onclose = () => { if (transport?.sessionId) delete transports[transport.sessionId]; };
-        await createMcpServer().connect(transport);
+        setTimeout(() => { if (transport?.sessionId) delete transports[transport.sessionId]; }, 30 * 60 * 1000);
+        await createMcpServer(sessionUserId).connect(transport);
       }
       if (!transport) { res.status(400).json({ jsonrpc: "2.0", error: { code: -32000, message: "Bad Request: no valid session" }, id: null }); return; }
       await transport.handleRequest(req, res, req.body);

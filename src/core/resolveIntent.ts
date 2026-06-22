@@ -31,8 +31,8 @@ export function resolveIntent(query: string, profile: UserProfile, explicit: Par
   const extra = query.match(/(\d{1,3})분만?\s*돌/); if (extra) intent.maxExtraMinutes = Number(extra[1]);
   intent.arrivalBy = intent.arrivalBy ?? parseKoreanArrivalTime(explicit.arrivalBy?.toString() ?? query);
 
-  if (/(^|\s)출근(?:\s|$)/.test(query)) intent = { ...intent, origin: profile.home, destination: profile.work, needs: !profile.home || !profile.work ? "homeWork" : undefined };
-  else if (/(^|\s)퇴근(?:\s|$)/.test(query)) intent = { ...intent, origin: profile.work, destination: profile.home, needs: !profile.home || !profile.work ? "homeWork" : undefined };
+  if (query.includes("출근")) intent = { ...intent, origin: profile.home, destination: profile.work, needs: !profile.home || !profile.work ? "homeWork" : undefined };
+  else if (query.includes("퇴근")) intent = { ...intent, origin: profile.work, destination: profile.home, needs: !profile.home || !profile.work ? "homeWork" : undefined };
 
   const fromTo = query.match(/(.+?)에서\s+(.+?)(?:\s|$)(?:빨리|최단|카페|낭만|산책|까지|$)/);
   if (fromTo) {

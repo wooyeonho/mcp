@@ -57,5 +57,5 @@ Koyeb에서 Dockerfile 기반 배포를 선택하면 repository root의 `Dockerf
 ## 무료 배포 주의사항
 
 - Free instance는 성능이 낮을 수 있으므로 시연 직전에 `/health`를 한 번 호출해 상태를 확인하세요.
-- 서버는 인메모리 프로필 저장소를 사용합니다. 인스턴스가 재시작되면 저장된 집/회사 정보는 초기화될 수 있습니다.
+- 프로필은 기본적으로 `./data/profiles.json`에 JSON 파일로 저장됩니다. 다른 경로가 필요하면 `PROFILE_STORE_PATH`를 Koyeb 환경변수로 지정하세요.
 - API 키는 아직 필요 없습니다. 향후 Kakao Local, TMAP, ODsay를 연결할 때만 Koyeb Secrets에 저장하세요.
