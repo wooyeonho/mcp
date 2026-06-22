@@ -92,19 +92,109 @@ export async function geocodePlace(placeName: string, kakaoApiKey?: string): Pro
   }
 }
 
+// Fixture-based place data (used when no API key or API fails)
+interface PlaceFixture {
+  match: (o: string, d: string) => boolean;
+  places: Partial<Record<PlaceType, PlaceSuggestion[]>>;
+}
+
+const placeFixtures: PlaceFixture[] = [
+  {
+    match: (o, d) => o.includes("강남") && d.includes("신림"),
+    places: {
+      cafe: [
+        { name: "강남역 뒤편 조용한 카페", type: "cafe", note: "퇴근길 방향이라 우회 없음", extraMinutes: 6 },
+        { name: "서초 골목 로스터리", type: "cafe", note: "한적하고 자리 넓음", extraMinutes: 8 },
+      ],
+      restaurant: [
+        { name: "강남 지하상가 덮밥집", type: "restaurant", note: "10분이면 식사 끝, 회전 빠름", extraMinutes: 12 },
+        { name: "역삼 혼밥 우동집", type: "restaurant", note: "줄 없고 맛 보장", extraMinutes: 15 },
+      ],
+      walk: [{ name: "서초 이면도로 산책길", type: "walk", note: "차 거의 없는 조용한 골목", extraMinutes: 10 }],
+      dessert: [{ name: "강남역 크로플 가게", type: "dessert", note: "포장 가능, 3분 대기", extraMinutes: 5 }],
+      any: [{ name: "강남역 뒤편 조용한 카페", type: "cafe", note: "퇴근길 방향이라 우회 없음", extraMinutes: 6 }],
+    },
+  },
+  {
+    match: (o, d) => o.includes("신림") && d.includes("강남"),
+    places: {
+      cafe: [{ name: "신림역 앞 테이크아웃 카페", type: "cafe", note: "출근길 1분 우회", extraMinutes: 3 }],
+      restaurant: [{ name: "신림 김밥천국", type: "restaurant", note: "아침 식사 5분 해결", extraMinutes: 8 }],
+      walk: [{ name: "관악산 입구 산책로", type: "walk", note: "10분 코스, 공기 좋음", extraMinutes: 12 }],
+      dessert: [{ name: "신림역 빵집", type: "dessert", note: "출근길 간식 포장", extraMinutes: 3 }],
+      any: [{ name: "신림역 앞 테이크아웃 카페", type: "cafe", note: "출근길 1분 우회", extraMinutes: 3 }],
+    },
+  },
+  {
+    match: (o, d) => o.includes("강남") && (d.includes("홍대") || d.includes("합정")),
+    places: {
+      cafe: [
+        { name: "합정 골목 카페", type: "cafe", note: "홍대 한 정거장 전, 분위기 좋음", extraMinutes: 8 },
+        { name: "연남동 루프탑 카페", type: "cafe", note: "홍대 방향 걷다 들르기 좋음", extraMinutes: 10 },
+      ],
+      restaurant: [
+        { name: "강남역 지하 혼밥 덮밥", type: "restaurant", note: "약속 전 빠르게 한 끼", extraMinutes: 12 },
+        { name: "합정역 국밥집", type: "restaurant", note: "든든하고 빠름", extraMinutes: 10 },
+      ],
+      walk: [{ name: "합정~홍대 걷기 코스", type: "walk", note: "연남동 방향 산책", extraMinutes: 10 }],
+      dessert: [{ name: "홍대입구 인근 마카롱", type: "dessert", note: "약속 선물용으로도 좋음", extraMinutes: 5 }],
+      any: [{ name: "합정 골목 카페", type: "cafe", note: "홍대 한 정거장 전, 분위기 좋음", extraMinutes: 8 }],
+    },
+  },
+  {
+    match: (o, d) => o.includes("여의도") || d.includes("여의도"),
+    places: {
+      cafe: [{ name: "여의도 한강공원 앞 카페", type: "cafe", note: "한강뷰 자리 있음", extraMinutes: 5 }],
+      restaurant: [{ name: "여의도 IFC몰 식당가", type: "restaurant", note: "다양한 선택지", extraMinutes: 10 }],
+      walk: [{ name: "여의도 한강공원 산책로", type: "walk", note: "서울 최고 한강 산책 코스", extraMinutes: 12 }],
+      dessert: [{ name: "여의도 파크원 디저트 카페", type: "dessert", note: "고급 디저트, 분위기 좋음", extraMinutes: 8 }],
+      any: [{ name: "여의도 한강공원 앞 카페", type: "cafe", note: "한강뷰 자리 있음", extraMinutes: 5 }],
+    },
+  },
+  {
+    match: (o, d) => o.includes("성수") || d.includes("성수"),
+    places: {
+      cafe: [
+        { name: "성수동 카페거리 로스터리", type: "cafe", note: "성수 특유의 감성 공간", extraMinutes: 6 },
+        { name: "뚝섬한강공원 앞 카페", type: "cafe", note: "야외 테라스 좌석", extraMinutes: 8 },
+      ],
+      restaurant: [{ name: "성수동 수제버거", type: "restaurant", note: "성수 핫플, 기다릴 가치 있음", extraMinutes: 15 }],
+      walk: [{ name: "성수 골목 산책", type: "walk", note: "카페·갤러리 사이 산책 코스", extraMinutes: 10 }],
+      dessert: [{ name: "성수동 소프트 아이스크림", type: "dessert", note: "SNS 유명 디저트", extraMinutes: 5 }],
+      any: [{ name: "성수동 카페거리 로스터리", type: "cafe", note: "성수 특유의 감성 공간", extraMinutes: 6 }],
+    },
+  },
+];
+
+const defaultPlaces: Record<string, PlaceSuggestion[]> = {
+  cafe: [
+    { name: "인근 조용한 카페", type: "cafe", note: "경로 근처 작은 우회", extraMinutes: 6 },
+    { name: "역 근처 스타벅스", type: "cafe", note: "자리 넉넉하고 접근 쉬움", extraMinutes: 4 },
+  ],
+  restaurant: [
+    { name: "혼밥하기 좋은 덮밥집", type: "restaurant", note: "역에서 가깝고 회전 빠름", extraMinutes: 12 },
+    { name: "인근 국밥집", type: "restaurant", note: "든든하고 빠름", extraMinutes: 10 },
+  ],
+  walk: [{ name: "이면도로 산책길", type: "walk", note: "차 적은 골목으로 짧게 우회", extraMinutes: 10 }],
+  dessert: [
+    { name: "역 근처 디저트 가게", type: "dessert", note: "포장 가능, 대기 짧음", extraMinutes: 5 },
+  ],
+  any: [{ name: "인근 조용한 카페", type: "cafe", note: "경로 근처 작은 우회", extraMinutes: 6 }],
+};
+
 export class KakaoLocalProvider implements PlaceProvider {
   constructor(private readonly apiKey?: string) {}
 
   async findAlongRoute(origin: string, destination: string, type: PlaceType): Promise<PlaceSuggestion[]> {
-    if (!this.apiKey) return this.mockPlaces(origin, type);
+    if (!this.apiKey) return this.fixturePlaces(origin, destination, type);
 
     const [oCoords, dCoords] = await Promise.all([
       geocodePlace(origin, this.apiKey),
       geocodePlace(destination, this.apiKey),
     ]);
 
-    if (!oCoords || !dCoords) return this.mockPlaces(origin, type);
-    if (type === "walk") return this.mockWalkPlaces(origin);
+    if (!oCoords || !dCoords) return this.fixturePlaces(origin, destination, type);
+    if (type === "walk") return this.fixturePlaces(origin, destination, type);
 
     const midLat = (oCoords.lat + dCoords.lat) / 2;
     const midLng = (oCoords.lng + dCoords.lng) / 2;
@@ -133,7 +223,7 @@ export class KakaoLocalProvider implements PlaceProvider {
         headers: { Authorization: `KakaoAK ${this.apiKey}` },
         signal: AbortSignal.timeout(3000),
       });
-      if (!res.ok) return this.mockPlaces(origin, type);
+      if (!res.ok) return this.fixturePlaces(origin, destination, type);
 
       const data = (await res.json()) as {
         documents: Array<{
@@ -144,7 +234,7 @@ export class KakaoLocalProvider implements PlaceProvider {
         }>;
       };
 
-      if (!data.documents?.length) return this.mockPlaces(origin, type);
+      if (!data.documents?.length) return this.fixturePlaces(origin, destination, type);
 
       return data.documents.slice(0, 3).map((doc) => ({
         name: doc.place_name,
@@ -153,29 +243,21 @@ export class KakaoLocalProvider implements PlaceProvider {
         extraMinutes: Math.max(3, Math.ceil(parseInt(doc.distance || "300") / 67)),
       }));
     } catch {
-      return this.mockPlaces(origin, type);
+      return this.fixturePlaces(origin, destination, type);
     }
   }
 
-  private mockPlaces(origin: string, type: PlaceType): PlaceSuggestion[] {
-    if (type === "walk") return this.mockWalkPlaces(origin);
+  private fixturePlaces(origin: string, destination: string, type: PlaceType): PlaceSuggestion[] {
+    const fixture = placeFixtures.find((f) => f.match(origin, destination));
+    if (fixture) {
+      return (fixture.places[type] ?? fixture.places.any) as PlaceSuggestion[];
+    }
+    return this.genericPlaces(origin, type);
+  }
+
+  private genericPlaces(origin: string, type: PlaceType): PlaceSuggestion[] {
     const area = KNOWN.find(([name]) => origin.includes(name))?.[0]?.replace("역", "") ?? origin.split("역")[0];
-    if (type === "cafe" || type === "dessert") {
-      return [
-        { name: `${area} 조용한 카페`, type, note: "경로상 5분 거리", extraMinutes: 5 },
-        { name: `${area} 스타벅스`, type, note: "접근 편리, 좌석 많음", extraMinutes: 3 },
-      ];
-    }
-    return [
-      { name: `${area} 혼밥 맛집`, type, note: "10분 컷 가능", extraMinutes: 12 },
-      { name: `${area} 간편 식사`, type, note: "빠른 테이블 회전", extraMinutes: 8 },
-    ];
-  }
-
-  private mockWalkPlaces(origin: string): PlaceSuggestion[] {
-    if (origin.includes("강남")) return [{ name: "서초 이면도로 산책길", type: "walk", note: "차 없는 조용한 골목", extraMinutes: 10 }];
-    if (origin.includes("신림")) return [{ name: "신림 근린공원 산책로", type: "walk", note: "녹지 코스", extraMinutes: 8 }];
-    if (origin.includes("홍대")) return [{ name: "홍대 골목길 산책", type: "walk", note: "거리 분위기 좋음", extraMinutes: 10 }];
-    return [{ name: `${origin.split("역")[0]} 인근 산책로`, type: "walk", note: "조용한 이면도로", extraMinutes: 10 }];
+    const typed = defaultPlaces[type] ?? defaultPlaces.any;
+    return typed.map((p) => ({ ...p, name: p.name.includes("인근") ? `${area} ${p.name}` : p.name }));
   }
 }
