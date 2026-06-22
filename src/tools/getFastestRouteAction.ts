@@ -2,7 +2,7 @@ import { z } from "zod";
 import { askClarification } from "../core/clarification.js";
 import { resolveIntent } from "../core/resolveIntent.js";
 import { formatSeoulTime, parseKoreanArrivalTime } from "../core/timeParser.js";
-import { estimateWalking } from "../core/walkingEstimator.js";
+import { estimateWalking, crossingSummary, realWalkMinutes } from "../core/walkingEstimator.js";
 import type { RouteProvider } from "../providers/types.js";
 import { getProfile, rememberDestination } from "../storage/profileStore.js";
 
@@ -19,7 +19,12 @@ export async function getFastestRouteAction(input: z.infer<z.ZodObject<typeof fa
 
     const practical = options.find((o) => o.mode === "subway") ?? options[0];
     const walk = estimateWalking(practical.firstWalkMinutes);
-    const arrival = new Date(Date.now() + practical.durationMinutes * 60000);
+    const toStopCrossings = practical.crossingsToStop ?? 0;
+    const fromStopCrossings = practical.crossingsFromStop ?? 0;
+    const realFirstWalk = realWalkMinutes(practical.firstWalkMinutes, toStopCrossings);
+    const realLastWalk = realWalkMinutes(practical.lastWalkMinutes, fromStopCrossings);
+    const totalRealMinutes = Math.round(realFirstWalk + practical.durationMinutes + realLastWalk);
+    const arrival = new Date(Date.now() + totalRealMinutes * 60000);
     const bus = options.find((o) => o.mode === "bus");
     const taxi = options.find((o) => o.mode === "taxi");
     const fastestOption = [...options].sort((a, b) => a.durationMinutes - b.durationMinutes)[0];
@@ -48,7 +53,11 @@ export async function getFastestRouteAction(input: z.infer<z.ZodObject<typeof fa
       lines.push(`${walk.fast}분 안에 도착하면 ${formatSeoulTime(arrival)} 도착 가능합니다. 못 맞추면 택시로 전환하세요.`);
     } else {
       lines.push(`지금 바로 ${practical.boardAt} 쪽으로 걸어가세요.`);
-      lines.push(`${walk.normal}분 안에 도착하면 ${formatSeoulTime(arrival)} 도착 가능합니다.`);
+      if (toStopCrossings > 0) {
+        lines.push(`${practical.boardAt}까지 도보 ${walk.normal}분 + 횡단보도 ${toStopCrossings}곳 대기 = 실제 약 ${Math.ceil(realFirstWalk)}분.`);
+      } else {
+        lines.push(`${walk.normal}분 안에 도착하면 ${formatSeoulTime(arrival)} 도착 가능합니다.`);
+      }
     }
     lines.push("");
 
@@ -59,15 +68,31 @@ export async function getFastestRouteAction(input: z.infer<z.ZodObject<typeof fa
       lines.push(`② "${intent.destination}" 말하고 탑승`);
       lines.push(`③ ${taxi.durationMinutes}분 뒤 도착`);
     } else {
-      lines.push(`① ${practical.boardAt}까지 걸어가기 (보통 ${walk.normal}분 / 빠른 걸음 ${walk.fast}분)`);
+      if (toStopCrossings > 0) {
+        lines.push(`① ${practical.boardAt}까지 걸어가기 (도보 ${walk.normal}분 + 횡단보도 ${toStopCrossings}곳 = 실제 약 ${Math.ceil(realFirstWalk)}분)`);
+      } else {
+        lines.push(`① ${practical.boardAt}까지 걸어가기 (보통 ${walk.normal}분 / 빠른 걸음 ${walk.fast}분)`);
+      }
       if (practical.line) {
         lines.push(`② ${practical.line} ${practical.direction ?? ""} 탑승`);
       } else if (practical.busNumber) {
         lines.push(`② ${practical.busNumber} 탑승`);
       }
-      lines.push(`③ ${practical.alightAt} 하차 → 도보 ${practical.lastWalkMinutes}분`);
+      if (fromStopCrossings > 0) {
+        lines.push(`③ ${practical.alightAt} 하차 → 도보 ${practical.lastWalkMinutes}분 + 횡단보도 ${fromStopCrossings}곳 = 실제 약 ${Math.ceil(realLastWalk)}분`);
+      } else {
+        lines.push(`③ ${practical.alightAt} 하차 → 도보 ${practical.lastWalkMinutes}분`);
+      }
     }
     lines.push("");
+
+    // 현실 총 소요시간
+    const crossingInfo = crossingSummary(toStopCrossings, fromStopCrossings);
+    if (crossingInfo) {
+      lines.push(`${crossingInfo}`);
+      lines.push(`현실 총 소요시간: 약 ${totalRealMinutes}분 (도보 + 횡단보도 대기 + 탑승 포함)`);
+      lines.push("");
+    }
 
     // 비교
     lines.push("비교:");
