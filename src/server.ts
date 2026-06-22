@@ -9,10 +9,13 @@ import { fastestSchema, getFastestRouteAction } from "./tools/getFastestRouteAct
 import { getGoodRoute, goodRouteSchema } from "./tools/getGoodRoute.js";
 import { saveUserPlaces, saveUserPlacesSchema } from "./tools/saveUserPlaces.js";
 
+const SERVICE_VERSION = "0.2.0";
+const TOOL_NAMES = ["save_user_places", "get_fastest_route_action", "get_good_route"] as const;
+
 function text(content: string) { return { content: [{ type: "text" as const, text: content }] }; }
 
 export function createMcpServer() {
-  const mcp = new McpServer({ name: "오늘길 OneulGil", version: "0.1.0" });
+  const mcp = new McpServer({ name: "오늘길 OneulGil", version: SERVICE_VERSION });
   const routeProvider = new MockRouteProvider();
   const placeProvider = new MockPlaceProvider();
 
@@ -24,8 +27,15 @@ export function createMcpServer() {
 
 export function createHttpApp() {
   const app = express();
+  app.use((_req, res, next) => {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Methods", "GET,POST,DELETE,OPTIONS");
+    res.header("Access-Control-Allow-Headers", "Content-Type, mcp-session-id, MCP-Session-Id");
+    next();
+  });
+  app.options("*", (_req, res) => res.sendStatus(204));
   app.use(express.json({ limit: "1mb" }));
-  app.get("/health", (_req, res) => res.json({ ok: true, service: "oneulgil-mcp", tools: ["save_user_places", "get_fastest_route_action", "get_good_route"] }));
+  app.get("/health", (_req, res) => res.json({ ok: true, service: "oneulgil-mcp", version: SERVICE_VERSION, tools: TOOL_NAMES }));
 
   const transports: Record<string, StreamableHTTPServerTransport> = {};
   app.post("/mcp", async (req, res) => {

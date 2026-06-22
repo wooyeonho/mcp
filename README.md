@@ -57,6 +57,7 @@ npm start
 
 ```bash
 npm run test:demo
+npm run test:assertions
 ```
 
 확인 시나리오:
@@ -67,6 +68,10 @@ npm run test:demo
 4. `퇴근 낭만` → 카페/산책 우회 추천
 5. `약속 늦었어` → 목적지만 질문
 
+
+## Docker/Koyeb 배포
+
+Docker 기반 배포가 필요하면 포함된 `Dockerfile`을 사용할 수 있습니다. Koyeb buildpack 배포는 아래 Koyeb Free 설정을 그대로 쓰면 됩니다.
 
 ## Koyeb Free 배포
 

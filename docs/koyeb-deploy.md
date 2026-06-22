@@ -5,7 +5,7 @@
 ## 권장 설정
 
 - Deployment method: GitHub repository
-- Builder: Node.js buildpack
+- Builder: Node.js buildpack 또는 Dockerfile
 - Instance: Free web service
 - Build command: `npm install && npm run build`
 - Run command: `npm start`
@@ -41,6 +41,10 @@
    ```text
    https://<koyeb-app>.koyeb.app/mcp
    ```
+
+## Dockerfile 사용 옵션
+
+Koyeb에서 Dockerfile 기반 배포를 선택하면 repository root의 `Dockerfile`을 사용합니다. 별도 API 키 없이도 mock provider로 실행됩니다.
 
 ## PlayMCP 등록 전 최종 확인
 
